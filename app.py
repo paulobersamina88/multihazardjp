@@ -8,7 +8,7 @@ import requests
 import streamlit as st
 import pydeck as pdk
 
-st.set_page_config(page_title="PH Multi-Hazard Watch v6", layout="wide")
+st.set_page_config(page_title="PH Multi-Hazard Watch v6.1", layout="wide")
 
 DEFAULT_BOUNDS = {
     "min_lat": -50.0,
@@ -194,13 +194,13 @@ def load_earthquakes(min_mag=5.0, days_back=14, bounds=None):
             "name": props.get("title", "Earthquake"),
             "source": "USGS",
             "time_utc": t,
-            "lat": lat,
-            "lon": lon,
+            "lat": float(lat),
+            "lon": float(lon),
             "magnitude": mag,
             "depth_km": depth,
             "distance_to_ph_km": round(dist, 0),
             "influence_band": influence_band(dist),
-            "risk_score": score,
+            "risk_score": float(score),
             "risk_level": classify(score),
             "details": props.get("place", ""),
             "url": props.get("url", ""),
@@ -226,13 +226,13 @@ def load_typhoon_actual():
         "name": label,
         "source": "PAGASA",
         "time_utc": datetime.now(timezone.utc),
-        "lat": PH_CENTER["lat"],
-        "lon": PH_CENTER["lon"],
+        "lat": float(PH_CENTER["lat"]),
+        "lon": float(PH_CENTER["lon"]),
         "magnitude": None,
         "depth_km": None,
         "distance_to_ph_km": 0.0,
         "influence_band": "Within PH context",
-        "risk_score": score,
+        "risk_score": float(score),
         "risk_level": classify(score),
         "details": "Active PAGASA tropical cyclone bulletin detected.",
         "url": PAGASA_BULLETIN_URL,
@@ -263,13 +263,13 @@ def load_phivolcs_actual_volcanoes():
             "name": key,
             "source": "PHIVOLCS / HazardHunter",
             "time_utc": t,
-            "lat": meta["lat"],
-            "lon": meta["lon"],
+            "lat": float(meta["lat"]),
+            "lon": float(meta["lon"]),
             "magnitude": None,
             "depth_km": None,
             "distance_to_ph_km": round(dist, 0),
             "influence_band": influence_band(dist),
-            "risk_score": score,
+            "risk_score": float(score),
             "risk_level": classify(score),
             "details": f"Alert Level {alert_level}. {since_text}.",
             "url": PHIVOLCS_ALERT_URL,
@@ -308,13 +308,13 @@ def load_gvp_actual_volcanoes():
                 "name": key,
                 "source": "Smithsonian GVP",
                 "time_utc": time_guess,
-                "lat": meta["lat"],
-                "lon": meta["lon"],
+                "lat": float(meta["lat"]),
+                "lon": float(meta["lon"]),
                 "magnitude": None,
                 "depth_km": None,
                 "distance_to_ph_km": round(dist, 0),
                 "influence_band": influence_band(dist),
-                "risk_score": score,
+                "risk_score": float(score),
                 "risk_level": classify(score),
                 "details": "Current eruption / active volcanic activity detected from Smithsonian GVP current eruptions page.",
                 "url": GVP_CURRENT_URL,
@@ -384,17 +384,48 @@ def filter_map_df(events_df, map_mode, focus_days_ago):
     elif map_mode == "Exact selected past day only":
         target = today - timedelta(days=focus_days_ago)
         out = work[work["event_date"] == target]
-    else:  # Lead-up from selected day to yesterday
+    else:
         start_day = today - timedelta(days=focus_days_ago)
         end_day = today - timedelta(days=1)
         out = work[(work["event_date"] >= start_day) & (work["event_date"] <= end_day)]
-    out = out.copy()
     if out.empty:
-        return out
-    # dynamic radius scaling based on current filtered view
+        return out.copy()
+    out = out.copy()
     max_score = max(float(out["risk_score"].max()), 1.0)
-    out["radius"] = out["risk_score"].apply(lambda s: 150000 + 850000 * (float(s) / max_score))
+    out["radius"] = out["risk_score"].apply(lambda s: float(150000 + 850000 * (float(s) / max_score)))
     return out
+
+def safe_view_state(df):
+    if df.empty:
+        return pdk.ViewState(latitude=12.0, longitude=125.0, zoom=3.0)
+    try:
+        lat = float(pd.to_numeric(df["lat"], errors="coerce").dropna().mean())
+        lon = float(pd.to_numeric(df["lon"], errors="coerce").dropna().mean())
+        if math.isnan(lat) or math.isnan(lon):
+            raise ValueError("nan center")
+        return pdk.ViewState(latitude=lat, longitude=lon, zoom=3.0)
+    except Exception:
+        return pdk.ViewState(latitude=12.0, longitude=125.0, zoom=3.0)
+
+def pydeck_ready_df(df):
+    if df.empty:
+        return df.copy()
+    cols = ["lat", "lon", "radius", "risk_score", "distance_to_ph_km"]
+    out = df.copy()
+    for c in cols:
+        if c in out.columns:
+            out[c] = pd.to_numeric(out[c], errors="coerce")
+    out["time_utc_str"] = pd.to_datetime(out["time_utc"], utc=True).dt.strftime("%Y-%m-%d %H:%M UTC")
+    out = out.dropna(subset=["lat", "lon", "radius"])
+    # reduce risky object serialization by keeping only primitive columns
+    keep = [
+        "lat", "lon", "radius", "hazard_type", "name", "source", "time_utc_str",
+        "risk_score", "distance_to_ph_km", "risk_level", "details"
+    ]
+    for k in keep:
+        if k not in out.columns:
+            out[k] = ""
+    return out[keep].copy()
 
 def build_timeline_html(df):
     if df.empty:
@@ -452,8 +483,8 @@ include_typhoon = st.sidebar.checkbox("Include active typhoon bulletin", value=T
 include_ph_volcano = st.sidebar.checkbox("Include PHIVOLCS volcano events", value=True)
 include_gvp_volcano = st.sidebar.checkbox("Include regional GVP eruptions", value=True)
 
-st.title("Philippines Multi-Hazard Regional Watch v6")
-st.caption("Now the map changes with the left controls. You can bind it to one exact past day or to the progressive lead-up period.")
+st.title("Philippines Multi-Hazard Regional Watch v6.1")
+st.caption("Fixed pydeck serialization issue and kept the map dynamically tied to the left-side controls.")
 
 eq_df, eq_err = load_earthquakes(min_mag=min_mag, days_back=14, bounds=bounds)
 ty_df, ty_err = load_typhoon_actual()
@@ -471,6 +502,7 @@ seq_df = build_day_ledger(actual_df, sequence_days)
 focus_df = get_exact_day(actual_df, focus_days_ago)
 leadup_df = get_leadup(actual_df, focus_days_ago)
 map_df = filter_map_df(actual_df, map_mode, focus_days_ago)
+map_plot_df = pydeck_ready_df(map_df)
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Earthquake rows", len(eq_df) if include_eq else 0)
@@ -487,12 +519,12 @@ left, right = st.columns([2, 1])
 with left:
     st.subheader("Regional hazard map")
     st.caption(f"Current map mode: {map_mode}")
-    if map_df.empty:
+    if map_plot_df.empty:
         st.warning("No actual events to plot for the current map mode.")
     else:
         layer = pdk.Layer(
             "ScatterplotLayer",
-            data=map_df,
+            data=map_plot_df,
             get_position='[lon, lat]',
             get_radius="radius",
             radius_min_pixels=6,
@@ -509,14 +541,15 @@ with left:
             get_line_color=[30, 30, 30, 180],
         )
         tooltip = {
-            "html": "<b>{hazard_type}</b><br/>{name}<br/>Source: {source}<br/>Time: {time_utc}<br/>Score: {risk_score}<br/>Distance to PH: {distance_to_ph_km} km<br/>{details}",
+            "html": "<b>{hazard_type}</b><br/>{name}<br/>Source: {source}<br/>Time: {time_utc_str}<br/>Score: {risk_score}<br/>Distance to PH: {distance_to_ph_km} km<br/>{details}",
             "style": {"backgroundColor": "steelblue", "color": "white"},
         }
-        # center map around filtered data if possible
-        view_lat = float(map_df["lat"].mean())
-        view_lon = float(map_df["lon"].mean())
         st.pydeck_chart(
-            pdk.Deck(layers=[layer], initial_view_state=pdk.ViewState(latitude=view_lat, longitude=view_lon, zoom=3.0), tooltip=tooltip),
+            pdk.Deck(
+                layers=[layer],
+                initial_view_state=safe_view_state(map_plot_df),
+                tooltip=tooltip,
+            ),
             use_container_width=True
         )
 
@@ -576,16 +609,13 @@ with tab2:
 with tab3:
     st.write(
         """
-        The map did not change before because it was plotting the full actual-event dataset regardless of the sequence controls.
-        In this version, the map can now switch between:
-        1. all actual events,
-        2. exact selected past day only,
-        3. lead-up from selected day to yesterday.
+        This fixes the map crash caused by pydeck JSON serialization on some Streamlit environments.
+        The map now uses a simplified plotting dataframe with only primitive values.
 
-        For the behavior you described, use:
-        - Map display mode = **Exact selected past day only**
-        - then move **Inspect this specific past day**
+        For day-by-day changes:
+        - choose **Map display mode = Exact selected past day only**
+        - move **Inspect this specific past day**
 
-        That will visibly change the map points on the right.
+        That should now update the right-side map without crashing.
         """
     )
