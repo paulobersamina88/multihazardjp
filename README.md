@@ -1,15 +1,12 @@
-# PH Multi-Hazard Regional Watch v5
+# PH Multi-Hazard Regional Watch v6
 
-This version adds real volcano events.
+## Main fix
+The right-side map now responds to the left-side day controls.
 
-## Included
-- Earthquakes from USGS
-- Active typhoon bulletin row from PAGASA
-- Philippine actual volcano rows from PHIVOLCS / HazardHunter
-- Broader regional actual volcano rows from Smithsonian GVP current eruptions
+## New map modes
+- All actual events in source window
+- Exact selected past day only
+- Lead-up from selected day to yesterday
 
-## Sequence behavior
-- 14 days ago row shows only 14-days-ago events
-- 13 days ago row shows only 13-days-ago events
-- exact-day panel shows only one selected day
-- lead-up panel shows the progression from that day to yesterday
+For day-by-day visual change, choose:
+- Exact selected past day only
