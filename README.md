@@ -1,20 +1,15 @@
-# PH Multi-Hazard Regional Watch v3
+# PH Multi-Hazard Regional Watch v5
 
-This version focuses on actual events.
-
-## What changed
-- The dynamic map now shows actual events only.
-- The timeline now shows actual events only.
-- The volcano watchlist is preserved as a separate reference table and is no longer injected into the map or timeline.
-- The timeline supports a progressive window ending today, yesterday, two days ago, and so on, up to a 14-day past sequence.
-- Added a lead-up table to inspect what happened before the largest event in the selected window.
+This version adds real volcano events.
 
 ## Included
-- `app.py`
-- `requirements.txt`
+- Earthquakes from USGS
+- Active typhoon bulletin row from PAGASA
+- Philippine actual volcano rows from PHIVOLCS / HazardHunter
+- Broader regional actual volcano rows from Smithsonian GVP current eruptions
 
-## Run
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+## Sequence behavior
+- 14 days ago row shows only 14-days-ago events
+- 13 days ago row shows only 13-days-ago events
+- exact-day panel shows only one selected day
+- lead-up panel shows the progression from that day to yesterday

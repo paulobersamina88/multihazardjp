@@ -2,3 +2,5 @@ streamlit>=1.36
 pandas>=2.0
 requests>=2.31
 pydeck>=0.9
+lxml>=5.0
+html5lib>=1.1
