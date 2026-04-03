@@ -1,29 +1,20 @@
-# PH Multi-Hazard Regional Watch
+# PH Multi-Hazard Regional Watch v3
 
-A Streamlit dashboard concept for monitoring regional hazards that may influence the Philippines:
-- Typhoon / tropical cyclone status
-- Earthquakes with configurable minimum magnitude
-- Volcano watchlist across the broader regional neighborhood
-- 14-day sequence timeline with horizontal scroll and day-by-day event ledger
+This version focuses on actual events.
+
+## What changed
+- The dynamic map now shows actual events only.
+- The timeline now shows actual events only.
+- The volcano watchlist is preserved as a separate reference table and is no longer injected into the map or timeline.
+- The timeline supports a progressive window ending today, yesterday, two days ago, and so on, up to a 14-day past sequence.
+- Added a lead-up table to inspect what happened before the largest event in the selected window.
 
 ## Included
 - `app.py`
 - `requirements.txt`
 
-## Run locally
-
+## Run
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
-
-## Timeline feature
-- Horizontal scroll timeline cards to compare event order
-- Daily sequence ledger for the last 3 to 14 days
-- Day inspector slider to review detailed order of events on a selected day
-
-## Notes
-- Earthquakes are live via USGS.
-- Typhoon status reads the PAGASA tropical cyclone bulletin page.
-- Volcanoes are still a curated regional watchlist in this version.
-- Volcano timeline timestamps are placeholders for now until a full eruption/advisory parser is added.
